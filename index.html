@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <title>Timer verrouillé</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <link rel="icon" type="image/png" href="favicon.png">
+
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
+    }
+
+    body {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: radial-gradient(circle at top, #1f2933 0, #05060a 55%, #000 100%);
+      color: #f9fafb;
+      overflow: hidden;
+      perspective: 1600px; /* IMPORTANT pour la porte */
+    }
+
+    /* Vidéo derrière */
+    #bravoVideo {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      object-fit: cover;
+      opacity: 0;
+      filter: blur(25px) brightness(0.3);
+      transition: opacity 1s ease, filter 1.2s ease;
+      z-index: -1;
+    }
+
+    .glass-container {
+      position: relative;
+      padding: 40px 50px;
+      border-radius: 32px;
+      background: rgba(15, 23, 42, 0.55);
+      border: 1px solid rgba(148, 163, 184, 0.35);
+      box-shadow:
+        0 24px 60px rgba(15, 23, 42, 0.9),
+        0 0 0 1px rgba(148, 163, 184, 0.25);
+      backdrop-filter: blur(24px) saturate(160%);
+      text-align: center;
+
+      transform-origin: left center;
+      transition: transform 1.2s ease-in-out;
+      z-index: 10;
+    }
+
+    /* Porte qui s'ouvre */
+    .open-door {
+      transform: rotateY(-95deg);
+    }
+
+    .glass-glow {
+      position: absolute;
+      inset: -40%;
+      background:
+        radial-gradient(circle at 0% 0%, rgba(96, 165, 250, 0.35), transparent 55%),
+        radial-gradient(circle at 100% 100%, rgba(244, 114, 182, 0.35), transparent 55%);
+      opacity: 0.7;
+      z-index: -1;
+      filter: blur(40px);
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px;
+      border-radius: 999px;
+      background: linear-gradient(120deg, rgba(96, 165, 250, 0.2), rgba(244, 114, 182, 0.2));
+      border: 1px solid rgba(148, 163, 184, 0.5);
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      margin-bottom: 18px;
+    }
+
+    .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 999px;
+      background: #22c55e;
+      box-shadow: 0 0 12px rgba(34, 197, 94, 0.9);
+    }
+
+    .timer {
+      font-size: 3.5rem;
+      font-weight: 600;
+      letter-spacing: 0.12em;
+      margin-bottom: 20px;
+    }
+
+    .status {
+      font-size: 0.95rem;
+      opacity: 0.9;
+      margin-bottom: 10px;
+    }
+
+    .hint {
+      font-size: 0.8rem;
+      opacity: 0.8;
+    }
+
+    .locked {
+      pointer-events: none;
+      opacity: 0.4;
+      filter: grayscale(1);
+    }
+
+    .hidden {
+      display: none !important;
+    }
+  </style>
+</head>
+<body>
+
+  <video id="bravoVideo" src="bravo.mp4"></video>
+
+  <div class="glass-container" id="timerContainer">
+    <div class="glass-glow"></div>
+
+    <div class="badge">
+      <span class="dot"></span>
+      <span>Coffre verrouillé</span>
+    </div>
+
+    <h1>Timer protégé</h1>
+    <p class="subtitle">Le temps continue même si tu rafraîchis la page.</p>
+
+    <div class="timer" id="timerDisplay">00:00</div>
+    <p class="status" id="statusText">Tape le code secret pour débloquer.</p>
+    <p class="hint">(Si tu l'as pas, ne reste pas là à rien faire !)</p>
+  </div>
+
+  <script>
+    const TIMER_DURATION_SECONDS = 50 * 60;
+    const STORAGE_KEY = "timer_end_timestamp";
+    const UNLOCK_CODE = "J'aime_les_chiouaoua";
+
+    const timerDisplay = document.getElementById("timerDisplay");
+    const statusText = document.getElementById("statusText");
+    const timerContainer = document.getElementById("timerContainer");
+    const bravoVideo = document.getElementById("bravoVideo");
+
+    let lockedForever = false;
+
+    function getOrCreateEndTime() {
+      const stored = localStorage.getItem(STORAGE_KEY);
+      if (stored) return parseInt(stored, 10);
+
+      const end = Date.now() + TIMER_DURATION_SECONDS * 1000;
+      localStorage.setItem(STORAGE_KEY, end);
+      return end;
+    }
+
+    let endTime = getOrCreateEndTime();
+
+    function formatTime(sec) {
+      const m = Math.floor(sec / 60);
+      const s = sec % 60;
+      return String(m).padStart(2, "0") + ":" + String(s).padStart(2, "0");
+    }
+
+    function updateTimer() {
+      if (lockedForever) return;
+
+      const now = Date.now();
+      const diff = Math.max(0, Math.floor((endTime - now) / 1000));
+
+      timerDisplay.textContent = formatTime(diff);
+
+      if (diff <= 0) {
+        loseForever();
+      }
+    }
+
+    const timerInterval = setInterval(updateTimer, 1000);
+    updateTimer();
+
+    function loseForever() {
+      lockedForever = true;
+      clearInterval(timerInterval);
+      localStorage.removeItem(STORAGE_KEY);
+
+      timerContainer.classList.add("locked");
+      statusText.textContent = "FMP";
+    }
+
+    let typedBuffer = "";
+
+    window.addEventListener("keydown", (e) => {
+      if (lockedForever) return;
+
+      if (e.key.length === 1) {
+        typedBuffer += e.key;
+
+        if (typedBuffer.includes(UNLOCK_CODE)) {
+          unlockDoor();
+        }
+      }
+    });
+
+    function unlockDoor() {
+      clearInterval(timerInterval);
+      localStorage.removeItem(STORAGE_KEY);
+
+      // Effet porte
+      timerContainer.classList.add("open-door");
+
+      // La vidéo devient nette
+      bravoVideo.style.opacity = "1";
+      bravoVideo.style.filter = "blur(0px) brightness(1)";
+
+      // Après l'ouverture, on cache l'encadré et on lance la vidéo
+      setTimeout(() => {
+        timerContainer.classList.add("hidden");
+        playVideo();
+      }, 1200);
+    }
+
+    async function playVideo() {
+      try { await bravoVideo.requestFullscreen(); } catch {}
+      try { await bravoVideo.play(); } catch {}
+    }
+  </script>
+</body>
+</html>

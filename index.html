@@ -23,10 +23,9 @@
       background: radial-gradient(circle at top, #1f2933 0, #05060a 55%, #000 100%);
       color: #f9fafb;
       overflow: hidden;
-      perspective: 1600px; /* IMPORTANT pour la porte */
+      perspective: 1600px;
     }
 
-    /* Vidéo derrière */
     #bravoVideo {
       position: fixed;
       top: 0;
@@ -51,13 +50,11 @@
         0 0 0 1px rgba(148, 163, 184, 0.25);
       backdrop-filter: blur(24px) saturate(160%);
       text-align: center;
-
       transform-origin: left center;
       transition: transform 1.2s ease-in-out;
       z-index: 10;
     }
 
-    /* Porte qui s'ouvre */
     .open-door {
       transform: rotateY(-95deg);
     }
@@ -113,6 +110,30 @@
       opacity: 0.8;
     }
 
+    input, button {
+      margin-top: 10px;
+      padding: 10px 14px;
+      border-radius: 10px;
+      border: none;
+      outline: none;
+      font-size: 0.9rem;
+    }
+
+    input {
+      width: 220px;
+    }
+
+    button {
+      cursor: pointer;
+      background: #22c55e;
+      color: white;
+      font-weight: 500;
+    }
+
+    button:hover {
+      background: #16a34a;
+    }
+
     .locked {
       pointer-events: none;
       opacity: 0.4;
@@ -140,8 +161,12 @@
     <p class="subtitle">Le temps continue même si tu rafraîchis la page.</p>
 
     <div class="timer" id="timerDisplay">00:00</div>
-    <p class="status" id="statusText">Tape le code secret pour débloquer.</p>
+    <p class="status" id="statusText">Entre le code pour débloquer.</p>
     <p class="hint">(Si tu l'as pas, ne reste pas là à rien faire !)</p>
+
+    <input type="password" id="codeInput" placeholder="Code secret..." />
+    <br>
+    <button id="unlockBtn">Débloquer</button>
   </div>
 
   <script>
@@ -153,6 +178,8 @@
     const statusText = document.getElementById("statusText");
     const timerContainer = document.getElementById("timerContainer");
     const bravoVideo = document.getElementById("bravoVideo");
+    const input = document.getElementById("codeInput");
+    const button = document.getElementById("unlockBtn");
 
     let lockedForever = false;
 
@@ -198,32 +225,31 @@
       statusText.textContent = "FMP";
     }
 
-    let typedBuffer = "";
+    button.addEventListener("click", checkCode);
+    input.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") checkCode();
+    });
 
-    window.addEventListener("keydown", (e) => {
+    function checkCode() {
       if (lockedForever) return;
 
-      if (e.key.length === 1) {
-        typedBuffer += e.key;
-
-        if (typedBuffer.includes(UNLOCK_CODE)) {
-          unlockDoor();
-        }
+      if (input.value === UNLOCK_CODE) {
+        unlockDoor();
+      } else {
+        statusText.textContent = "Code incorrect.";
+        input.value = "";
       }
-    });
+    }
 
     function unlockDoor() {
       clearInterval(timerInterval);
       localStorage.removeItem(STORAGE_KEY);
 
-      // Effet porte
       timerContainer.classList.add("open-door");
 
-      // La vidéo devient nette
       bravoVideo.style.opacity = "1";
       bravoVideo.style.filter = "blur(0px) brightness(1)";
 
-      // Après l'ouverture, on cache l'encadré et on lance la vidéo
       setTimeout(() => {
         timerContainer.classList.add("hidden");
         playVideo();
@@ -233,6 +259,11 @@
     async function playVideo() {
       try { await bravoVideo.requestFullscreen(); } catch {}
       try { await bravoVideo.play(); } catch {}
+    }
+  </script>
+
+</body>
+</html>
     }
   </script>
 </body>
